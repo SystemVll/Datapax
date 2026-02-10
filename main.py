@@ -9,6 +9,96 @@ class Colors:
     RESET = "\033[0m"
     BOLD = "\033[1m"
 
+import sys
+import os
+import gc
+import random
+import argparse
+
+# Parse command line arguments
+parser = argparse.ArgumentParser(
+    description="DataPax - Batch image processing with Qwen Image Edit model",
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    epilog="""
+Examples:
+  python main.py --comfyui "C:\\ComfyUI"
+  python main.py --comfyui "C:\\ComfyUI" --prompt "enhance the image"
+  python main.py --comfyui "C:\\ComfyUI" --width 1024 --height 1024 --steps 8
+"""
+)
+
+parser.add_argument(
+    "--comfyui",
+    type=str,
+    required=True,
+    help="Path to ComfyUI installation directory (required)"
+)
+
+parser.add_argument(
+    "--prompt",
+    type=str,
+    default="Seamlessly outpaint the image while keeping the entire plane fully visible, centered, and in correct real-world proportions; preserve the original background, lighting, colors, sharpness, texture, and perspective exactly as-is without any alteration; fill missing or extended areas naturally using only the existing background and visual context; add pixels only where necessary for completion with no removal, replacement, or modification of existing pixels; maintain strict photorealism with a neutral, faithful reconstruction, dataset-safe output, and no artistic interpretation or enhancements; negative: text, logos, banners, watermarks, captions, borders, cropping, cut-off subject, censorship bars, blur, distortion, artifacts, compression noise, PNG transparency, added objects, removed details, style change, stylized look, cinematic lighting, dramatic shadows, illustration, painting, fantasy, surrealism.",
+    help="Prompt for image processing"
+)
+
+parser.add_argument(
+    "--input-dir",
+    type=str,
+    default="data/inputs",
+    help="Input directory containing images (default: data/inputs)"
+)
+
+parser.add_argument(
+    "--output-dir",
+    type=str,
+    default="data/outputs",
+    help="Output directory for processed images (default: data/outputs)"
+)
+
+parser.add_argument(
+    "--width",
+    type=int,
+    default=720,
+    help="Output width (default: 720)"
+)
+
+parser.add_argument(
+    "--height",
+    type=int,
+    default=720,
+    help="Output height (default: 720)"
+)
+
+parser.add_argument(
+    "--steps",
+    type=int,
+    default=4,
+    help="Number of inference steps (default: 4)"
+)
+
+parser.add_argument(
+    "--cfg",
+    type=float,
+    default=1.0,
+    help="Guidance scale (default: 1.0)"
+)
+
+parser.add_argument(
+    "--sampler",
+    type=str,
+    default="sa_solver",
+    help="Sampler name (default: sa_solver)"
+)
+
+parser.add_argument(
+    "--scheduler",
+    type=str,
+    default="beta",
+    help="Scheduler name (default: beta)"
+)
+
+args = parser.parse_args()
+
 print(f"""{Colors.ORANGE}{Colors.BOLD}
 ██████╗  █████╗ ████████╗ █████╗ ██████╗  █████╗ ██╗  ██╗
 ██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗╚██╗██╔╝
@@ -18,33 +108,57 @@ print(f"""{Colors.ORANGE}{Colors.BOLD}
 ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝
 {Colors.RESET}""")
 
-import sys
-import os
-import gc
-import random
+# Add ComfyUI to path
+COMFYUI_PATH = args.comfyui
+if not os.path.exists(COMFYUI_PATH):
+    print(f"{Colors.RED}✗ ComfyUI path does not exist: {COMFYUI_PATH}{Colors.RESET}")
+    sys.exit(1)
 
-
-# Add ComfyUI to path - adjust this path to your ComfyUI installation
-COMFYUI_PATH = r"C:\Users\User\Documents\ComfyUI\ComfyUI"
-if os.path.exists(COMFYUI_PATH):
-    sys.path.insert(0, COMFYUI_PATH)
+print(f"{Colors.CYAN}📂 ComfyUI Path: {Colors.GRAY}{COMFYUI_PATH}{Colors.RESET}")
+sys.path.insert(0, COMFYUI_PATH)
 
 import torch
 from PIL import Image
 import math
 import numpy as np
 
-# Configuration
+# Configuration from arguments
 MODEL_PATH = "models/Qwen-Rapid-AIO-SFW-v23.safetensors"
-INPUT_DIR = "data/inputs"
-OUTPUT_DIR = "data/outputs"
-PROMPT = "Seamlessly outpaint the image while keeping the entire plane fully visible, centered, and in correct real-world proportions; preserve the original background, lighting, colors, sharpness, texture, and perspective exactly as-is without any alteration; fill missing or extended areas naturally using only the existing background and visual context; add pixels only where necessary for completion with no removal, replacement, or modification of existing pixels; maintain strict photorealism with a neutral, faithful reconstruction, dataset-safe output, and no artistic interpretation or enhancements; negative: text, logos, banners, watermarks, captions, borders, cropping, cut-off subject, censorship bars, blur, distortion, artifacts, compression noise, PNG transparency, added objects, removed details, style change, stylized look, cinematic lighting, dramatic shadows, illustration, painting, fantasy, surrealism."
-WIDTH = 720
-HEIGHT = 720
-NUM_INFERENCE_STEPS = 4
-GUIDANCE_SCALE = 1.0
-SAMPLER = "sa_solver"
-SCHEDULER = "beta"
+MODEL_URL = "https://huggingface.co/Phr00t/Qwen-Image-Edit-Rapid-AIO/resolve/main/v23/Qwen-Rapid-AIO-SFW-v23.safetensors"
+INPUT_DIR = args.input_dir
+OUTPUT_DIR = args.output_dir
+PROMPT = args.prompt
+WIDTH = args.width
+HEIGHT = args.height
+NUM_INFERENCE_STEPS = args.steps
+GUIDANCE_SCALE = args.cfg
+SAMPLER = args.sampler
+SCHEDULER = args.scheduler
+
+# Download model if not present
+os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+if not os.path.exists(MODEL_PATH):
+    print(f"{Colors.YELLOW}⬇ Model not found, downloading from HuggingFace...{Colors.RESET}")
+    print(f"{Colors.GRAY}  {MODEL_URL}{Colors.RESET}")
+    try:
+        import urllib.request
+        import shutil
+
+        def download_progress(block_num, block_size, total_size):
+            downloaded = block_num * block_size
+            if total_size > 0:
+                percent = min(100, downloaded * 100 / total_size)
+                downloaded_mb = downloaded / (1024 * 1024)
+                total_mb = total_size / (1024 * 1024)
+                print(f"\r{Colors.CYAN}  Downloading: {percent:.1f}% ({downloaded_mb:.1f}/{total_mb:.1f} MB){Colors.RESET}", end="", flush=True)
+
+        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH, download_progress)
+        print(f"\n{Colors.GREEN}✓ Model downloaded successfully{Colors.RESET}")
+    except Exception as e:
+        print(f"\n{Colors.RED}✗ Failed to download model: {e}{Colors.RESET}")
+        print(f"{Colors.YELLOW}  Please download manually from:{Colors.RESET}")
+        print(f"{Colors.GRAY}  {MODEL_URL}{Colors.RESET}")
+        sys.exit(1)
 
 # Create directories if they don't exist
 os.makedirs(INPUT_DIR, exist_ok=True)
