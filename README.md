@@ -1,3 +1,6 @@
+> [!NOTE]
+> Datapax is not production-ready and is currently in active development.</br> Datapax achieve **79.5%** success rate on a small test set of 1000 images.
+
 <div align="center">
 
 <img width="256" height="256" alt="Datapax Logo" src="https://github.com/user-attachments/assets/f1a9a15a-8104-4ef8-bf0c-2803a569e4e2" />
@@ -7,7 +10,7 @@
 **AI-powered dataset patching and normalization pipeline for image data.**
 
 Intelligently normalize images of any size and aspect ratio into fixed resolutions<br />
-using AI-assisted outpainting—not naive resizing or cropping.
+using AI-assisted outpainting not naive resizing or cropping.
 
 ---
 
@@ -16,11 +19,6 @@ using AI-assisted outpainting—not naive resizing or cropping.
 ---
 
 </div>
-
-> [!NOTE]
-> **Project Status: Prototype**
->
-> Datapax is not open-source yet. Once a stable and working reference implementation is ready, the repository will be opened **ASAP**.
 
 The project currently uses **Qwen Image Edit Plus**, but the architecture is designed to be model-agnostic and replaceable.
 
