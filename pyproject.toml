@@ -1,0 +1,6 @@
+[project]
+name = "Datapax"
+version = "0.1.0"
+description = "Experimental pipeline for AI-assisted image normalization and dataset preparation using generative outpainting."
+requires-python = "==3.12.*"
+dependencies = []
