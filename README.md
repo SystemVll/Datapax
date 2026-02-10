@@ -116,10 +116,10 @@ Once milestone **#2** is reached, the repository will be made public immediately
 
 - [ ] Modular backend interface (multiple image-edit models)
 - [ ] CLI interface for dataset processing
-- [ ] Batch processing & parallelism
+- [x] Batch processing
 - [ ] Metadata & annotation preservation
 - [ ] Config-driven pipelines
-- [ ] Open-source release
+- [x] Open-source release
 
 ---
 
