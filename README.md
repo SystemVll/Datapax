@@ -1,5 +1,6 @@
 > [!NOTE]
-> Datapax is not production-ready and is currently in active development.</br> Datapax achieve **79.5%** success rate on a small test set of 1000 images.
+> Datapax is not production-ready and is currently in active development.</br> 
+> It achieve **79.5%** success rate on a small test set of 1000 images.
 
 <div align="center">
 
